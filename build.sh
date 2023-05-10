@@ -3,24 +3,29 @@
 set -e
 
 project_name="python-bootstrap"
-docker_image_name="python-pip-image"
+project_volume=${project_name}-volume
+docker_sdk_image_name=${project_name}-sdk-image
+docker_pipenv_image_name="python-pipenv-image"
 
-if [ "$1" != "clean" ]; then
-  if docker images | awk '{print $1}' | grep -q "^$docker_image_name$"; then
-      echo "Docker image $1 exists"
-  else
-      echo "Docker image $1 does not exist. Building one..."
-      docker build -t "$docker_image_name" -f sdk/Dockerfile sdk/
-  fi
-fi
+################### Functions go after this line ###################
 
-# create a volume that will be used to cache docker builds
-docker volume create "$project_name" > /dev/null
+function init() {
+    if docker images | awk '{print $1}' | grep -q "^$docker_pipenv_image_name$"; then
+        echo "Docker image $docker_pipenv_image_name exists"
+    else
+        echo "Docker image $docker_pipenv_image_name does not exist. Building one..."
+        docker build -t "$docker_pipenv_image_name" -f sdk/Dockerfile sdk/
+    fi
+
+    # create a volume that will be used to cache docker builds
+    docker volume create "$project_volume" > /dev/null
+}
 
 function clean() {
   echo "Cleaning up environment"
-  docker volume rm -f "$project_name"
-  docker image rm -f "$docker_image_name"
+  docker volume rm -f "$project_volume"
+  docker image rm -f "$docker_pipenv_image_name"
+  docker image rm -f "$docker_sdk_image_name"
 }
 
 function docker-run() {
@@ -29,35 +34,24 @@ function docker-run() {
 
   docker run -it --rm \
       -v .:/project \
-      -v $project_name:/root/.local/share/virtualenvs/ \
-      --workdir /project \
+      -v $project_volume:/project/.venv \
       --entrypoint "$function_name" \
-      "$docker_image_name" \
+      "$docker_pipenv_image_name" \
       "$@"
 }
 
-function pipenv-install() {
-  docker-run pipenv install
+function build-sdk() {
+  echo "FROM $docker_pipenv_image_name AS builder-linux-x64
+COPY Pipfile /project/Pipfile
+COPY Pipfile.lock /project/Pipfile.lock
+RUN pipenv install --dev" > sdk/sdk.Dockerfile
+
+  docker build -t "$docker_sdk_image_name" -f sdk/sdk.Dockerfile .
 }
 
-function pipenv-install-dev() {
-  docker-run pipenv install --dev
-}
 
-function setup-sdk() {
-  pipenv-install-dev
 
-  echo "version: '3.8'
-services:
-  ${project_name}-sdk:
-    image: $docker_image_name
-    working_dir: /project
-    volumes:
-      - $(pwd):/project
-      - $project_name:/root/.local/share/virtualenvs/
-volumes:
-  $project_name:" \ > sdk/docker-compose.yml
-}
+################### Functions go before this line ###################
 
 if [ $# -eq 0 ]; then
   echo "No arguments provided, please provide a function name."
@@ -70,6 +64,11 @@ if declare -F "$function_name" > /dev/null; then
   # if the function exists call shift to remove the first argument (function name) from the arguments list and
   # pass the reaming ones as arguments
   shift
+
+  if [ "$function_name" != "clean" ] && [ "$function_name" != "init" ]; then
+    init
+  fi
+
   $function_name "$@"
 else
   # if the function doesn't exists call docker-run and pass all arguments to it

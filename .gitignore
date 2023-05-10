@@ -24,3 +24,4 @@ venv/
 # Miscellaneous
 *.DS_Store
 /sdk/docker-compose.yml
+/sdk/sdk.Dockerfile
