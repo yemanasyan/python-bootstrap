@@ -1,0 +1,26 @@
+# IntelliJ IDEA files
+.idea/
+*.iml
+
+# Compiled Python files
+*.pyc
+__pycache__/
+
+# Compiled C extensions
+*.so
+
+# Distribution / packaging
+dist/
+build/
+eggs/
+*.egg-info/
+
+# Local development settings
+.env
+venv/
+.venv/
+.vscode/
+
+# Miscellaneous
+*.DS_Store
+/sdk/docker-compose.yml
