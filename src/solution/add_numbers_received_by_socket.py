@@ -59,18 +59,11 @@ class NumbersAccumulation:
         return accumulation_thread
 
     def _accumulation_values(self):
-        attempts_after_getting_finish_signal = 0
-        while attempts_after_getting_finish_signal < 3:
-            if self.finish_accumulation:
-                attempts_after_getting_finish_signal += 1
-
+        while not self.finish_accumulation or not self.input_data_queue.empty():
             if self.input_data_queue.empty():
-                sleep(2)
                 continue
 
             stream, number = self.input_data_queue.get()
-            attempts_after_getting_finish_signal = 0
-
             if self.first_number_pointer is None:
                 self.first_number_pointer = ListNode(number)
                 self.stream_pointers[stream] = self.first_number_pointer

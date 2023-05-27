@@ -1,4 +1,30 @@
 class Solution:
+
+    def convert(self, s: str, numRows: int) -> str:
+        string_length = len(s)
+        if string_length <= 2 or numRows < 2:
+            return s
+
+        result = ""
+        for row in range(numRows):
+            char_index = row
+
+            while char_index < string_length:
+                result += s[char_index]
+
+                if row != 0 and row != numRows - 1:
+                    remaining_rows = numRows - row - 1
+                    next_char = char_index + 2 * remaining_rows
+                    if next_char < string_length:
+                        result += s[next_char]
+
+                char_index += 2 * numRows - 2
+
+        return result
+
+
+class Solution1:
+
     def convert(self, s: str, numRows: int) -> str:
         going_down = True
         row_number = 0
